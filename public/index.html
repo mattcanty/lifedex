@@ -1,0 +1,327 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Lifedex</title>
+
+    <script defer src="/__/firebase/3.8.0/firebase-app.js"></script>
+    <script defer src="/__/firebase/3.8.0/firebase-auth.js"></script>
+    <script defer src="/__/firebase/3.8.0/firebase-database.js"></script>
+    <script defer src="/__/firebase/init.js"></script>
+
+    <!--Import Google Icon Font-->
+    <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
+    <!--Import materialize.css-->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/materialize/0.98.2/css/materialize.min.css">
+
+    <!--Let browser know website is optimized for mobile-->
+    <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  </head>
+  <body>
+    <header class="page-header">
+      <div class="container">
+        <div class="row">
+          <div class="col s12">
+            <h1 class="header">Lifedex</h1>
+            <div class="divider"></div>
+          </div>
+        </div>
+      </div>
+    </header>
+    <main class="page-main">
+      <div class="container">
+        <div class="row">
+          <div class="col s12">
+            <p id="load" class="flow-text">
+              Lifedex is Loading&hellip;
+            </p>
+            <p class="flow-text">
+              This is the start of the beginning of an idea to track life performance - <i>Lifedex</i>.
+            </p>
+            <p class="flow-text user-content" style="visibility:hidden">
+              So how are you feeling?
+            </p>
+          </div>
+        </div>
+        <div class="row user-content" style="visibility:hidden">
+          <div class="col s12 m4">
+            <a class="waves-effect waves-lite green btn-large" href="#happy-modal" style="margin-bottom: 15px;">
+              <i class="material-icons left">sentiment_very_satisfied</i>Happy
+            </a>
+            <br>
+          </div>
+          <div class="col s12 m4">
+            <a class="waves-effect waves-lite red btn-large" href="#unhappy-modal" style="margin-bottom: 15px;">
+              <i class="material-icons left">sentiment_very_dissatisfied</i>Unhappy
+            </a>
+          </div>
+          <div class="col s12 m4">
+            <a class="waves-effect waves-lite yellow btn-large"  href="#indifferent-modal" style="margin-bottom: 15px;">
+              <i class="material-icons left">sentiment_neutral</i>Indifferent
+            </a>
+          </div>
+        </div>
+        <div class="section">
+          <div class="row user-content" style="visibility:hidden">
+            <div class="col s12">
+              <div class="divider"></div>
+                <h4>The past week</h4>
+                <div id="chart"></div>
+                <div class="progress" id="chart-progress">
+                  <div class="indeterminate"></div>
+                </div>
+              </div>
+            </div>
+          </div>
+          <div class="section">
+            <div class="row user-content" style="visibility:hidden">
+              <div class="col s12">
+                <div class="divider"></div>
+                  <h4>Notes</h4>
+                  Coming soon...
+                </div>
+              </div>
+            </div>
+        </div>
+      </div>
+    </main>
+
+    <div id="happy-modal" class="modal">
+      <div class="modal-content">
+        <h4>Glad to hear it</h4>
+        <p>What's making you happy right now?</p>
+        <input id="happy-note" type="text" placeholder="Just feelin' good!" />
+      </div>
+      <div class="modal-footer">
+        <a id="happy-button" class="modal-action modal-close waves-green cyan btn-flat">Submit</a>
+        <a href="#!" class="modal-action modal-close btn-flat">Back</a>
+      </div>
+    </div>
+
+    <div id="unhappy-modal" class="modal">
+      <div class="modal-content">
+        <h4>That's a shame</h4>
+        <p>How come you're feeling this way?</p>
+        <input id="unhappy-note" type="text" placeholder="Just 'cos." />
+      </div>
+      <div class="modal-footer">
+        <a id="unhappy-button" class="modal-action modal-close waves-green cyan btn-flat">Submit</a>
+        <a href="#!" class="modal-action modal-close btn-flat">Back</a>
+      </div>
+    </div>
+
+    <div id="indifferent-modal" class="modal">
+      <div class="modal-content">
+        <h4>That's okay</h4>
+        <p>Any particular reason you'd like to give?</p>
+        <input id="indifferent-note" type="text" placeholder="Feeling meh..." />
+      </div>
+      <div class="modal-footer">
+        <a id="indifferent-button" class="modal-action modal-close waves-green cyan btn-flat">Submit</a>
+        <a href="#!" class="modal-action modal-close btn-flat">Back</a>
+      </div>
+    </div>
+
+    <script type="text/javascript" src="https://code.jquery.com/jquery-2.1.1.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/materialize/0.98.2/js/materialize.min.js"></script>
+    <script type="text/javascript" src="https://www.gstatic.com/charts/loader.js"></script>
+    <script>
+      var dateToday = new Date()
+      dateToday.setHours(0, 0, 0)
+
+      google.charts.load('current', {packages: ['corechart']});
+
+      Date.prototype.addDays = function(days) {
+        this.setDate(this.getDate() + parseInt(days));
+        return this;
+      };
+
+      var daysOfWeek = ['Sun','Mon','Tue','Wed','Thur','Fri','Sat']
+
+      var rowData = [
+        ['',0,0,0],
+        ['',0,0,0],
+        ['',0,0,0],
+        ['',0,0,0],
+        ['',0,0,0],
+        ['',0,0,0],
+        ['',0,0,0]
+      ]
+
+      var moodRows = {
+        'unhappy':1,
+        'indifferent':2,
+        'happy':3
+      }
+
+      var dateRowMap = {}
+
+      function toDateString(date){
+        return date.getFullYear() + '-' + date.getMonth() + '-' + date.getDate()
+      }
+
+      function addMoodDateToChart(mood, date){
+        if(dateRowMap[toDateString(date)]){
+          rowData[dateRowMap[toDateString(date)]][moodRows[mood]]++
+        }
+      }
+
+      for (var i = 0; i < 7; i++){
+        var iDate = new Date().addDays(-i)
+
+        dateRowMap[toDateString(iDate)] = 6 - i
+
+        rowData[6 - i][0] = daysOfWeek[iDate.getDay()]
+      }
+
+      function drawChart() {
+
+        var data = new google.visualization.DataTable()
+        data.addColumn('string', 'Day')
+        data.addColumn('number', 'Unhappy')
+        data.addColumn('number', 'Indifferent')
+        data.addColumn('number', 'Happy')
+        data.addRows(rowData)
+
+        var options = {
+          legend: { position: 'none' },
+          bar: { groupWidth: '75%' },
+          isStacked: true,
+          series: {
+            0:{color:'Red'},
+            1:{color:'Yellow'},
+            2:{color:'Lime'}
+          }
+        };
+
+        var chart = new google.visualization.ColumnChart(document.getElementById('chart'));
+
+        document.getElementById('chart-progress').style.visibility = 'hidden'
+
+        chart.draw(data, options);
+      }
+
+      $(document).ready(function () {
+        $(window).resize(function(){
+            drawChart();
+        });
+      });
+
+      function googleSignIn(){
+        var provider = new firebase.auth.GoogleAuthProvider();
+
+        firebase.auth().signInWithRedirect(provider);
+
+        firebase.auth().getRedirectResult().then(function(result) {
+          if (result.credential) {
+            var token = result.credential.accessToken;
+          }
+          var user = result.user;
+        }).catch(function(error) {
+          var errorCode = error.code;
+          var errorMessage = error.message;
+          var email = error.email;
+          var credential = error.credential;
+        });
+      }
+
+      function signOut(){
+        firebase.auth().signOut().then(function() {
+        }).catch(function(error) {
+          console.error(error)
+        });
+      }
+
+      document.addEventListener('DOMContentLoaded', function() {
+
+        $(document).ready(function() {
+            $('.modal').modal();
+        });
+
+        let app = firebase.app();
+
+        firebase.auth().onAuthStateChanged(function(user) {
+          if (user) {
+            var elements = document.getElementsByClassName('user-content')
+
+            for(var i = 0; i < elements.length; i++){
+              elements[i].style.visibility = 'visible'
+            }
+
+            var displayName = user.displayName;
+            var uid = user.uid;
+
+            var timestampsSlug = 'users/' + uid + '/mood/timestamps/'
+
+            firebase.database().ref(timestampsSlug + 'happy').once('value', function (snap){
+              snap.forEach(function(item) {
+                addMoodDateToChart('happy', new Date(item.val().timestamp))
+              })
+
+              drawChart()
+            })
+
+            firebase.database().ref(timestampsSlug + 'unhappy').once('value', function (snap){
+              snap.forEach(function(item) {
+                addMoodDateToChart('unhappy', new Date(item.val().timestamp))
+              })
+
+              drawChart()
+            })
+
+            firebase.database().ref(timestampsSlug + 'indifferent').once('value', function (snap){
+              snap.forEach(function(item) {
+                addMoodDateToChart('indifferent', new Date(item.val().timestamp))
+              })
+
+              drawChart()
+            })
+
+            document.getElementById('load').innerHTML =
+              `Hello ${displayName} - <a href="#" onclick="signOut()">sign out</a>`;
+
+            function logMood(mood, note){
+              firebase.database().ref()
+                .child('users/' + uid + '/mood/timestamps/' + mood).push({
+                  timestamp:firebase.database.ServerValue.TIMESTAMP
+                })
+
+              addMoodDateToChart(mood, new Date())
+
+              drawChart()
+
+              if (note){
+                firebase.database().ref()
+                  .child('users/' + uid + '/mood/notes').push({
+                    timestamp:firebase.database.ServerValue.TIMESTAMP,
+                    mood: mood,
+                    note: note
+                  })
+              }
+            }
+
+            document.getElementById('unhappy-button').onclick = function(){
+              logMood("unhappy", document.getElementById('unhappy-note').value);
+            }
+            document.getElementById('indifferent-button').onclick = function(){
+              logMood("indifferent", document.getElementById('indifferent-note').value);
+            }
+            document.getElementById('happy-button').onclick = function(){
+              logMood("happy", document.getElementById('happy-note').value);
+            }
+
+          } else {
+            var elements = document.getElementsByClassName('user-content')
+
+            for(var i = 0; i < elements.length; i++){
+              elements[i].style.visibility = 'hidden'
+            }
+
+            document.getElementById('load').innerHTML = `<a href="#" onclick="googleSignIn()" class="btn blue">Sign in with Google</a>`;
+          }
+        });
+      });
+    </script>
+  </body>
+</html>
